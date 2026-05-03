@@ -1,5 +1,37 @@
+/**
+ * TRACKFIT - Logica dell'applicazione
+ */
+
+// Funzioni Globali (necessarie per gli attributi onclick nell'HTML)
+window.deleteWorkout = async (id) => {
+    if (!confirm('Sei sicuro di voler eliminare questo allenamento?')) return;
+    
+    try {
+        const response = await fetch(`/api/workouts/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            if (window.refreshWorkouts) window.refreshWorkouts();
+            if (window.notifyUser) window.notifyUser('Allenamento eliminato! 🗑️', 'success');
+        } else {
+            alert('Errore durante l\'eliminazione');
+        }
+    } catch (error) {
+        console.error('Errore:', error);
+    }
+};
+
+window.downloadData = (format) => {
+    const a = document.createElement('a');
+    a.href = `/api/export/${format}`;
+    a.download = `workouts.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Prendiamo i riferimenti agli elementi HTML principali
     const form = document.getElementById('workout-form');
     const submitBtn = document.getElementById('submit-btn');
     const toast = document.getElementById('toast');
@@ -7,60 +39,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const emptyState = document.getElementById('empty-state');
     const workoutsTable = document.getElementById('workouts-table');
 
-    // Carichiamo subito gli allenamenti salvati all'avvio della pagina
+    // Inizializzazione
     loadWorkouts();
 
-    // Gestiamo il salvataggio quando si preme il pulsante
+    // Esposizione funzioni per l'ambito globale
+    window.refreshWorkouts = loadWorkouts;
+    window.notifyUser = showToast;
+
+    // Gestione Invio Form
     form.addEventListener('submit', async (e) => {
-        e.preventDefault(); // Evitiamo che la pagina si ricarichi
+        e.preventDefault();
         
-        // Prendiamo i valori dai campi di input
         const type = document.getElementById('type').value;
         const hours = parseInt(document.getElementById('hours').value) || 0;
         const minutes = parseInt(document.getElementById('minutes').value) || 0;
-
-        // Calcoliamo la durata totale in minuti (ore * 60 + minuti)
         const totalDuration = (hours * 60) + minutes;
 
-        // Controlliamo che l'utente abbia inserito almeno un minuto di allenamento
         if (totalDuration <= 0) {
-            showToast('Inserisci una durata valida per l\'allenamento', 'error');
+            showToast('Inserisci una durata valida', 'error');
             return;
         }
 
-        // Mostriamo all'utente che stiamo salvando cambiando il pulsante
         const originalBtnText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<span class="loader"></span> Salvataggio...';
+        submitBtn.innerHTML = 'Salvataggio...';
         submitBtn.disabled = true;
 
         try {
-            // Inviamo i dati al nostro server locale
             const response = await fetch('/api/workouts', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type, duration: totalDuration })
             });
 
             if (response.ok) {
-                form.reset(); // Svuotiamo il modulo dopo il salvataggio
-                showToast('Allenamento salvato con successo! 🎉', 'success');
-                loadWorkouts(); // Aggiorniamo la tabella con i nuovi dati
-            } else {
-                throw new Error('Errore nel salvataggio');
+                form.reset();
+                showToast('Allenamento salvato! 🎉', 'success');
+                loadWorkouts();
             }
         } catch (error) {
-            console.error('Error:', error);
-            showToast('Errore durante il salvataggio. Riprova.', 'error');
+            showToast('Errore nel salvataggio', 'error');
         } finally {
-            // Ripristiniamo il pulsante al suo stato normale
             submitBtn.innerHTML = originalBtnText;
             submitBtn.disabled = false;
         }
     });
 
-    // Funzione per scaricare gli allenamenti dal server
     async function loadWorkouts() {
         try {
             const response = await fetch('/api/workouts');
@@ -69,15 +92,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderWorkouts(workouts);
             }
         } catch (error) {
-            console.error('Errore nel caricamento:', error);
+            console.error('Errore caricamento:', error);
         }
     }
 
-    // Funzione per disegnare la tabella con gli allenamenti
     function renderWorkouts(workouts) {
-        workoutsBody.innerHTML = ''; // Svuotiamo prima la tabella
+        workoutsBody.innerHTML = '';
         
-        // Se non ci sono allenamenti, mostriamo il messaggio che invita a iniziare
         if (workouts.length === 0) {
             workoutsTable.style.display = 'none';
             emptyState.style.display = 'block';
@@ -87,31 +108,24 @@ document.addEventListener('DOMContentLoaded', () => {
         workoutsTable.style.display = 'table';
         emptyState.style.display = 'none';
 
-        // Ordiniamo gli allenamenti dal più recente al più vecchio
         workouts.sort((a, b) => new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time));
 
-        // Per ogni allenamento, creiamo una riga nella tabella
         workouts.forEach(workout => {
-            const row = document.createElement('tr');
-            
-            // Formattiamo la data per essere leggibile in italiano (es. 01/05/2026)
             const dateObj = new Date(workout.date);
             const dateStr = dateObj.toLocaleDateString('it-IT');
-            const timeStr = workout.time.substring(0, 5); // Prendiamo solo HH:MM
+            const timeStr = workout.time.substring(0, 5);
             
-            // Calcoliamo ore e minuti dalla durata totale per mostrarli testualmente
             const h = Math.floor(workout.duration / 60);
             const m = workout.duration % 60;
-            let durationText = '';
-            if (h > 0) durationText += `${h}h `;
-            if (m > 0 || h === 0) durationText += `${m}m`;
+            let durationText = `${h > 0 ? h + 'h ' : ''}${m}m`;
             
+            const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${dateStr} ${timeStr}</td>
                 <td>${workout.type}</td>
                 <td>${durationText}</td>
                 <td>
-                    <button class="btn-delete" onclick="deleteWorkout('${workout.id}')" title="Elimina allenamento">
+                    <button class="btn-delete" onclick="deleteWorkout('${workout.id}')" title="Elimina">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                     </button>
                 </td>
@@ -120,46 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Funzione per eliminare un allenamento tramite API
-    window.deleteWorkout = async (id) => {
-        if (!confirm('Sei sicuro di voler eliminare questo allenamento?')) return;
-
-        try {
-            const response = await fetch(`/api/workouts/${id}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                showToast('Allenamento eliminato con successo! 🗑️', 'success');
-                loadWorkouts(); // Ricarichiamo la tabella
-            } else {
-                throw new Error('Errore durante l\'eliminazione');
-            }
-        } catch (error) {
-            console.error('Errore:', error);
-            showToast('Impossibile eliminare l\'allenamento.', 'error');
-        }
-    };
-
-    // Funzione globale usata dai pulsanti "Esporta"
-    window.downloadData = (format) => {
-        // Creiamo un link "fantasma" per far partire il download
-        const a = document.createElement('a');
-        a.href = `/api/export/${format}`;
-        a.download = `workouts.${format}`; // Nome del file
-        document.body.appendChild(a);
-        a.click(); // Simuliamo il clic
-        document.body.removeChild(a); // Rimuoviamo il link
-    };
-
-    // Funzione per mostrare il messaggino a comparsa (toast) in basso
     function showToast(message, type = 'success') {
         toast.textContent = message;
         toast.className = `toast show ${type === 'error' ? 'error' : ''}`;
-        
-        // Lo nascondiamo in automatico dopo 3 secondi
-        setTimeout(() => {
-            toast.className = 'toast hidden';
-        }, 3000);
+        setTimeout(() => { toast.className = 'toast hidden'; }, 3000);
     }
 });

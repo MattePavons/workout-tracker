@@ -123,6 +123,7 @@ app.delete('/api/workouts/:id', (req, res) => {
         workouts = workouts.filter(w => w.id !== id);
         
         if (workouts.length === initialLength) {
+            console.log('[Server] Allenamento non trovato per ID:', id);
             return res.status(404).json({ error: 'Allenamento non trovato' });
         }
         
