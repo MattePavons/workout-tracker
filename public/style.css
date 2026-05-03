@@ -24,14 +24,16 @@ body {
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start; /* Permette lo scroll corretto se il contenuto è lungo */
+    padding: 2rem 0;
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 /* Background Animated Blobs */
 .background-elements {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
