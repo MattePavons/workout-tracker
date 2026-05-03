@@ -113,6 +113,26 @@ app.get('/api/export/xml', (req, res) => {
     }
 });
 
+// Rotta per eliminare un allenamento
+app.delete('/api/workouts/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        let workouts = getWorkouts();
+        
+        const initialLength = workouts.length;
+        workouts = workouts.filter(w => w.id !== id);
+        
+        if (workouts.length === initialLength) {
+            return res.status(404).json({ error: 'Allenamento non trovato' });
+        }
+        
+        fs.writeFileSync(DATA_FILE, JSON.stringify(workouts, null, 2));
+        res.json({ message: 'Allenamento eliminato con successo' });
+    } catch (err) {
+        res.status(500).json({ error: 'Errore durante l\'eliminazione' });
+    }
+});
+
 app.use(express.static('public')); // Serve i file statici dopo le rotte API
 
 

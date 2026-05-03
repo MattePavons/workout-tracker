@@ -204,6 +204,24 @@ header p {
     border-color: rgba(255, 255, 255, 0.2);
 }
 
+.btn-delete {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+}
+
 /* Export Section */
 .export-desc {
     color: var(--text-secondary);
